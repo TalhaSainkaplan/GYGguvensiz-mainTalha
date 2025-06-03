@@ -1,0 +1,122 @@
+# Güvenlik Açıkları ve Test Raporu
+
+## 1. SQL Injection Zafiyeti
+
+### Zafiyet Açıklaması
+`UnsafeExamplesController.cs` içerisinde bulunan `UnsafeLogin` metodu, SQL Injection saldırılarına açık bir yapıya sahiptir. Kullanıcı girişi doğrudan SQL sorgusuna eklenmektedir.
+
+```csharp
+string query = $"SELECT * FROM Users WHERE Username = '{username}' AND Password = '{password}'";
+var user = _context.Users.FromSqlRaw(query).FirstOrDefault();
+```
+
+### Test Senaryosu
+1. Kullanıcı adı alanına: `' OR '1'='1`
+2. Şifre alanına: `' OR '1'='1`
+3. Bu giriş, tüm kullanıcıları listeleyecek ve ilk kullanıcıya giriş yapılmasını sağlayacaktır.
+
+### Güvenli Alternatif
+`SafeExamplesController.cs` içerisinde bulunan `SafeLogin` metodu, parametreli sorgu kullanarak SQL Injection'ı önlemektedir:
+
+```csharp
+var user = _context.Users
+    .FirstOrDefault(u => u.Username == username && u.Password == password);
+```
+
+## 2. XML External Entity (XXE) Zafiyeti
+
+### Zafiyet Açıklaması
+`UnsafeExamplesController.cs` ve `XmlExampleController.cs` içerisinde, XML dosyalarının güvensiz bir şekilde işlenmesi söz konusudur. XML dosyaları doğrudan `XmlDocument` ile yüklenmekte ve herhangi bir güvenlik kontrolü yapılmamaktadır.
+
+### Test Senaryosu
+1. Aşağıdaki içeriğe sahip bir XML dosyası hazırlayın:
+```xml
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE foo [
+<!ELEMENT foo ANY >
+<!ENTITY xxe SYSTEM "file:///etc/passwd" >]>
+<foo>&xxe;</foo>
+```
+2. Bu dosyayı XML giriş formu üzerinden yükleyin.
+
+### Güvenli Alternatif
+XML işleme yaparken:
+- DTD desteğini devre dışı bırakın
+- Entity çözümlemeyi kısıtlayın
+- XML şema doğrulaması yapın
+
+## 3. Cross-Site Scripting (XSS) Zafiyeti
+
+### Zafiyet Açıklaması
+`XssExample.cshtml` içerisinde, kullanıcı girdileri `Html.Raw()` metodu ile işlenmektedir, bu da XSS saldırılarına açık bir yapı oluşturmaktadır.
+
+```csharp
+<p>Ad Soyad: @Html.Raw(Model.FullName)</p>
+```
+
+### Test Senaryosu
+1. Personel adı alanına şu kodu girin:
+```html
+<script>alert('XSS Test')</script>
+```
+2. Bu kod, sayfa yüklendiğinde bir JavaScript alert'ı tetikleyecektir.
+
+### Güvenli Alternatif
+`SafeXssExample.cshtml` içerisinde, kullanıcı girdileri doğrudan işlenmektedir:
+
+```csharp
+<p>Ad Soyad: @Model.FullName</p>
+```
+
+## 4. Oturum Yönetimi Zafiyeti
+
+### Zafiyet Açıklaması
+`UnsafeExamplesController.cs` içerisindeki `BrokenSecret` metodu, oturum kontrolü yapmadan hassas bilgilere erişim sağlamaktadır.
+
+### Test Senaryosu
+1. Oturum açmadan `/UnsafeExamples/BrokenSecret` URL'sine erişin
+2. Hassas bilgilere erişim sağlanabilecektir
+
+### Güvenli Alternatif
+`SafeExamplesController.cs` içerisindeki `SafeSecret` metodu, oturum kontrolü yapmaktadır:
+
+```csharp
+if (HttpContext.Session.GetString("username") == null)
+    return RedirectToAction("Login", "Account");
+```
+
+## Öneriler
+
+1. **SQL Injection Koruması**
+   - Parametreli sorgular kullanın
+   - Entity Framework'ün güvenli metodlarını tercih edin
+
+2. **XXE Koruması**
+   - XML işleme güvenlik ayarlarını yapılandırın
+   - DTD ve entity çözümlemeyi kısıtlayın
+
+3. **XSS Koruması**
+   - Kullanıcı girdilerini her zaman encode edin
+   - `Html.Raw()` kullanımından kaçının
+   - Content Security Policy (CSP) uygulayın
+
+4. **Oturum Güvenliği**
+   - Tüm hassas sayfalarda oturum kontrolü yapın
+   - Oturum zaman aşımı sürelerini ayarlayın
+   - Güvenli çıkış (logout) mekanizması ekleyin
+
+5. **Genel Güvenlik Önlemleri**
+   - Input validasyonu yapın
+   - Hata mesajlarını özelleştirin
+   - HTTPS kullanın
+   - Güvenlik başlıklarını (Security Headers) ekleyin
+
+## Sonuç
+
+Bu rapor, projedeki temel güvenlik açıklarını ve bunların nasıl test edilebileceğini göstermektedir. Güvenlik testleri yaparken, bu testleri sadece test ortamında gerçekleştirmeniz ve üretim ortamında bu tür testlerden kaçınmanız önemlidir.
+
+---
+
+Rapor Tarihi: [Tarih]
+Hazırlayan: [İsim]
+Versiyon: 1.0 

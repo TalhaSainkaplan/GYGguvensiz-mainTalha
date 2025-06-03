@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Güvenlik Açıkları ve Test Raporu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 40px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #16a085;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        }
+        .test-case {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            margin: 10px 0;
+        }
+        .recommendation {
+            background-color: #d4edda;
+            padding: 15px;
+            border-left: 4px solid #28a745;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Güvenlik Açıkları ve Test Raporu</h1>
+
+    <h2>1. SQL Injection Zafiyeti</h2>
+    <h3>Zafiyet Açıklaması</h3>
+    <p><code>UnsafeExamplesController.cs</code> içerisinde bulunan <code>UnsafeLogin</code> metodu, SQL Injection saldırılarına açık bir yapıya sahiptir. Kullanıcı girişi doğrudan SQL sorgusuna eklenmektedir.</p>
+    <pre><code>string query = $"SELECT * FROM Users WHERE Username = '{username}' AND Password = '{password}'";
+var user = _context.Users.FromSqlRaw(query).FirstOrDefault();</code></pre>
+
+    <h3>Test Senaryosu</h3>
+    <div class="test-case">
+        <ol>
+            <li>Kullanıcı adı alanına: <code>' OR '1'='1</code></li>
+            <li>Şifre alanına: <code>' OR '1'='1</code></li>
+            <li>Bu giriş, tüm kullanıcıları listeleyecek ve ilk kullanıcıya giriş yapılmasını sağlayacaktır.</li>
+        </ol>
+    </div>
+
+    <h3>Güvenli Alternatif</h3>
+    <p><code>SafeExamplesController.cs</code> içerisinde bulunan <code>SafeLogin</code> metodu, parametreli sorgu kullanarak SQL Injection'ı önlemektedir:</p>
+    <pre><code>var user = _context.Users
+    .FirstOrDefault(u => u.Username == username && u.Password == password);</code></pre>
+
+    <h2>2. XML External Entity (XXE) Zafiyeti</h2>
+    <h3>Zafiyet Açıklaması</h3>
+    <p><code>UnsafeExamplesController.cs</code> ve <code>XmlExampleController.cs</code> içerisinde, XML dosyalarının güvensiz bir şekilde işlenmesi söz konusudur. XML dosyaları doğrudan <code>XmlDocument</code> ile yüklenmekte ve herhangi bir güvenlik kontrolü yapılmamaktadır.</p>
+
+    <h3>Test Senaryosu</h3>
+    <div class="test-case">
+        <ol>
+            <li>Aşağıdaki içeriğe sahip bir XML dosyası hazırlayın:
+                <pre><code>&lt;?xml version="1.0" encoding="ISO-8859-1"?&gt;
+&lt;!DOCTYPE foo [
+&lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM "file:///etc/passwd" &gt;]&gt;
+&lt;foo&gt;&amp;xxe;&lt;/foo&gt;</code></pre>
+            </li>
+            <li>Bu dosyayı XML giriş formu üzerinden yükleyin.</li>
+        </ol>
+    </div>
+
+    <h3>Güvenli Alternatif</h3>
+    <div class="recommendation">
+        <p>XML işleme yaparken:</p>
+        <ul>
+            <li>DTD desteğini devre dışı bırakın</li>
+            <li>Entity çözümlemeyi kısıtlayın</li>
+            <li>XML şema doğrulaması yapın</li>
+        </ul>
+    </div>
+
+    <h2>3. Cross-Site Scripting (XSS) Zafiyeti</h2>
+    <h3>Zafiyet Açıklaması</h3>
+    <p><code>XssExample.cshtml</code> içerisinde, kullanıcı girdileri <code>Html.Raw()</code> metodu ile işlenmektedir, bu da XSS saldırılarına açık bir yapı oluşturmaktadır.</p>
+    <pre><code>&lt;p&gt;Ad Soyad: @Html.Raw(Model.FullName)&lt;/p&gt;</code></pre>
+
+    <h3>Test Senaryosu</h3>
+    <div class="test-case">
+        <ol>
+            <li>Personel adı alanına şu kodu girin:
+                <pre><code>&lt;script&gt;alert('XSS Test')&lt;/script&gt;</code></pre>
+            </li>
+            <li>Bu kod, sayfa yüklendiğinde bir JavaScript alert'ı tetikleyecektir.</li>
+        </ol>
+    </div>
+
+    <h3>Güvenli Alternatif</h3>
+    <p><code>SafeXssExample.cshtml</code> içerisinde, kullanıcı girdileri doğrudan işlenmektedir:</p>
+    <pre><code>&lt;p&gt;Ad Soyad: @Model.FullName&lt;/p&gt;</code></pre>
+
+    <h2>4. Oturum Yönetimi Zafiyeti</h2>
+    <h3>Zafiyet Açıklaması</h3>
+    <p><code>UnsafeExamplesController.cs</code> içerisindeki <code>BrokenSecret</code> metodu, oturum kontrolü yapmadan hassas bilgilere erişim sağlamaktadır.</p>
+
+    <h3>Test Senaryosu</h3>
+    <div class="test-case">
+        <ol>
+            <li>Oturum açmadan <code>/UnsafeExamples/BrokenSecret</code> URL'sine erişin</li>
+            <li>Hassas bilgilere erişim sağlanabilecektir</li>
+        </ol>
+    </div>
+
+    <h3>Güvenli Alternatif</h3>
+    <p><code>SafeExamplesController.cs</code> içerisindeki <code>SafeSecret</code> metodu, oturum kontrolü yapmaktadır:</p>
+    <pre><code>if (HttpContext.Session.GetString("username") == null)
+    return RedirectToAction("Login", "Account");</code></pre>
+
+    <h2>Öneriler</h2>
+    <div class="recommendation">
+        <h3>1. SQL Injection Koruması</h3>
+        <ul>
+            <li>Parametreli sorgular kullanın</li>
+            <li>Entity Framework'ün güvenli metodlarını tercih edin</li>
+        </ul>
+
+        <h3>2. XXE Koruması</h3>
+        <ul>
+            <li>XML işleme güvenlik ayarlarını yapılandırın</li>
+            <li>DTD ve entity çözümlemeyi kısıtlayın</li>
+        </ul>
+
+        <h3>3. XSS Koruması</h3>
+        <ul>
+            <li>Kullanıcı girdilerini her zaman encode edin</li>
+            <li><code>Html.Raw()</code> kullanımından kaçının</li>
+            <li>Content Security Policy (CSP) uygulayın</li>
+        </ul>
+
+        <h3>4. Oturum Güvenliği</h3>
+        <ul>
+            <li>Tüm hassas sayfalarda oturum kontrolü yapın</li>
+            <li>Oturum zaman aşımı sürelerini ayarlayın</li>
+            <li>Güvenli çıkış (logout) mekanizması ekleyin</li>
+        </ul>
+
+        <h3>5. Genel Güvenlik Önlemleri</h3>
+        <ul>
+            <li>Input validasyonu yapın</li>
+            <li>Hata mesajlarını özelleştirin</li>
+            <li>HTTPS kullanın</li>
+            <li>Güvenlik başlıklarını (Security Headers) ekleyin</li>
+        </ul>
+    </div>
+
+    <h2>Sonuç</h2>
+    <p>Bu rapor, projedeki temel güvenlik açıklarını ve bunların nasıl test edilebileceğini göstermektedir. Güvenlik testleri yaparken, bu testleri sadece test ortamında gerçekleştirmeniz ve üretim ortamında bu tür testlerden kaçınmanız önemlidir.</p>
+
+    <div class="footer">
+        <p>Rapor Tarihi: [Tarih]</p>
+        <p>Hazırlayan: [İsim]</p>
+        <p>Versiyon: 1.0</p>
+    </div>
+</body>
+</html> 

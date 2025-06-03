@@ -1,0 +1,37 @@
+@{
+    ViewData["Title"] = "Login";
+}
+
+<h2>Login</h2>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+@if (ViewBag.Result != null)
+{
+    <div class="alert alert-info mt-3">@ViewBag.Result</div>
+}
+
+<!-- 🟦 Klasik Kullanıcı Adı / Şifre ile Giriş -->
+<form method="post" asp-controller="UnsafeExamples" asp-action="UnsafeLogin">
+    <div class="form-group">
+        <label for="username">Kullanıcı Adı</label>
+        <input type="text" class="form-control" name="username" />
+    </div>
+    <div class="form-group">
+        <label for="password">Şifre</label>
+        <input type="password" class="form-control" name="password" />
+    </div>
+    <button type="submit" class="btn btn-primary">Giriş Yap</button>
+</form>
+
+<hr />
+
+<!--  XML ile Giriş (XML Bomb Test) -->
+<h3>XML ile Giriş</h3>
+<form method="post" asp-controller="UnsafeExamples" asp-action="UnsafeLogin" enctype="multipart/form-data">
+    <input type="file" name="xmlFile" class="form-control" />
+    <br />
+    <button type="submit" class="btn btn-danger">XML ile Giriş</button>
+</form>
